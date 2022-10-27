@@ -65,7 +65,6 @@ import (
 	"k8s.io/component-base/term"
 	"k8s.io/component-base/version"
 	"k8s.io/component-base/version/verflag"
-	"k8s.io/klog/v2"
 	aggregatorapiserver "k8s.io/kube-aggregator/pkg/apiserver"
 	aggregatorscheme "k8s.io/kube-aggregator/pkg/apiserver/scheme"
 	netutils "k8s.io/utils/net"
@@ -97,6 +96,9 @@ func NewAPIServerCommand() *cobra.Command {
 for the api objects which include pods, services, replicationcontrollers, and
 others. The API Server services REST operations and provides the frontend to the
 cluster's shared state through which all other components interact.`,
+
+//k8s api server为k8s api对象验证和配置数据
+//api server为REST操作提供服务，提供集群的状态信息
 
 		// stop printing usage when the command errors
 		SilenceUsage: true,

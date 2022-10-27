@@ -24,6 +24,7 @@ import (
 	kubectrlmgrconfig "k8s.io/kubernetes/pkg/controller/apis/config"
 )
 
+//Config是controller manager的主要context object
 // Config is the main context object for the controller manager.
 type Config struct {
 	ComponentConfig kubectrlmgrconfig.KubeControllerManagerConfiguration
