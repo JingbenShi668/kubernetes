@@ -28,6 +28,7 @@ import (
 	"k8s.io/kubernetes/pkg/controller/job"
 )
 
+//JobController
 func startJobController(ctx context.Context, controllerContext ControllerContext) (controller.Interface, bool, error) {
 	go job.NewController(
 		controllerContext.InformerFactory.Core().V1().Pods(),
@@ -37,6 +38,7 @@ func startJobController(ctx context.Context, controllerContext ControllerContext
 	return nil, true, nil
 }
 
+//CronJobController
 func startCronJobController(ctx context.Context, controllerContext ControllerContext) (controller.Interface, bool, error) {
 
 	cj2c, err := cronjob.NewControllerV2(controllerContext.InformerFactory.Batch().V1().Jobs(),

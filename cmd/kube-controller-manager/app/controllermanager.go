@@ -67,7 +67,6 @@ import (
 	controllerhealthz "k8s.io/controller-manager/pkg/healthz"
 	"k8s.io/controller-manager/pkg/informerfactory"
 	"k8s.io/controller-manager/pkg/leadermigration"
-	"k8s.io/klog/v2"
 	kubefeatures "k8s.io/kubernetes/pkg/features"
 
 	"k8s.io/kubernetes/cmd/kube-controller-manager/app/config"
@@ -116,6 +115,11 @@ state of the cluster through the apiserver and makes changes attempting to move 
 current state towards the desired state. Examples of controllers that ship with
 Kubernetes today are the replication controller, endpoints controller, namespace
 controller, and serviceaccounts controller.`,
+
+//k8s controller manager是一个daemon, 是k8s内置的核心控制循环
+//目前k8s中的controller有replication controller，endpoints controller，
+//namespace controller，serviceaccounts controller.
+
 		PersistentPreRunE: func(*cobra.Command, []string) error {
 			// silence client-go warnings.
 			// kube-controller-manager generically watches APIs (including deprecated ones),
@@ -325,20 +329,25 @@ func Run(c *config.CompletedConfig, stopCh <-chan struct{}) error {
 	return nil
 }
 
+//ControllerContext定义了controller的context object
 // ControllerContext defines the context object for controller
 type ControllerContext struct {
+	//ClientBuilder提供this controller所要使用的client
 	// ClientBuilder will provide a client for this controller to use
 	ClientBuilder clientbuilder.ControllerClientBuilder
 
+	//InformerFactory授予informer访问controller的权限
 	// InformerFactory gives access to informers for the controller.
 	InformerFactory informers.SharedInformerFactory
 
+	//ObjectOrMetadataInformerFactory授予informer访问respirce的权限
 	// ObjectOrMetadataInformerFactory gives access to informers for typed resources
 	// and dynamic resources by their metadata. All generic controllers currently use
 	// object metadata - if a future controller needs access to the full object this
 	// would become GenericInformerFactory and take a dynamic client.
 	ObjectOrMetadataInformerFactory informerfactory.InformerFactory
 
+	//ComponentConfig为给定controller提供init options
 	// ComponentConfig provides access to init options for a given controller
 	ComponentConfig kubectrlmgrconfig.KubeControllerManagerConfiguration
 
@@ -347,9 +356,11 @@ type ControllerContext struct {
 	// requested.
 	RESTMapper *restmapper.DeferredDiscoveryRESTMapper
 
+	//AvailableResources是一个map，列出了目前可获得的resource
 	// AvailableResources is a map listing currently available resources
 	AvailableResources map[schema.GroupVersionResource]bool
 
+	//Clouds是针对controller使用的cloud provider interface
 	// Cloud is the cloud provider interface for the controllers to use.
 	// It must be initialized and ready to use.
 	Cloud cloudprovider.Interface
@@ -372,20 +383,24 @@ type ControllerContext struct {
 	ControllerManagerMetrics *controllersmetrics.ControllerManagerMetrics
 }
 
+//IsControllerEnabled检验controllers是否启动
 // IsControllerEnabled checks if the context's controllers enabled or not
 func (c ControllerContext) IsControllerEnabled(name string) bool {
 	return genericcontrollermanager.IsControllerEnabled(name, ControllersDisabledByDefault, c.ComponentConfig.Generic.Controllers)
 }
 
+//InitFunc用于启动特定的controller, InitFunc返回一个实现interfaces的controller以满足用户需要
 // InitFunc is used to launch a particular controller. It returns a controller
 // that can optionally implement other interfaces so that the controller manager
 // can support the requested features.
+//匿名controller不能像controller manager请求additional features
 // The returned controller may be nil, which will be considered an anonymous controller
 // that requests no additional features from the controller manager.
 // Any error returned will cause the controller process to `Fatal`
 // The bool indicates whether the controller was enabled.
 type InitFunc func(ctx context.Context, controllerCtx ControllerContext) (controller controller.Interface, enabled bool, err error)
 
+//ControllerInitializersFunc用于创建initializers的集合
 // ControllerInitializersFunc is used to create a collection of initializers
 //
 //	given the loopMode.
@@ -393,6 +408,7 @@ type ControllerInitializersFunc func(loopMode ControllerLoopMode) (initializers 
 
 var _ ControllerInitializersFunc = NewControllerInitializers
 
+//返回已知的controllers name
 // KnownControllers returns all known controllers's name
 func KnownControllers() []string {
 	ret := sets.StringKeySet(NewControllerInitializers(IncludeCloudLoops))
@@ -408,6 +424,7 @@ func KnownControllers() []string {
 	return ret.List()
 }
 
+//ControllersDisabledByDefault是controllers的集合，默认被禁用
 // ControllersDisabledByDefault is the set of controllers which is disabled by default
 var ControllersDisabledByDefault = sets.NewString(
 	"bootstrapsigner",
@@ -470,8 +487,10 @@ func NewControllerInitializers(loopMode ControllerLoopMode) map[string]InitFunc 
 	return controllers
 }
 
+//GetAvailableResources获取map, map包含apiserver中所有available resources
 // GetAvailableResources gets the map which contains all available resources of the apiserver
 // TODO: In general, any controller checking this needs to be dynamic so
+//如果我们修改了apiserver, 没必要重启controller
 // users don't have to restart their controller manager if they change the apiserver.
 // Until we get there, the structure here needs to be exposed for the construction of a proper ControllerContext.
 func GetAvailableResources(clientBuilder clientbuilder.ControllerClientBuilder) (map[schema.GroupVersionResource]bool, error) {
@@ -499,6 +518,8 @@ func GetAvailableResources(clientBuilder clientbuilder.ControllerClientBuilder) 
 	return allResources, nil
 }
 
+//CreateControllerContext创建context struct，context struct包含controllers所需的资源的references
+//rootClientBuilder仅仅用于shared-informers的client和oken controller
 // CreateControllerContext creates a context struct containing references to resources needed by the
 // controllers such as the cloud provider and clientBuilder. rootClientBuilder is only used for
 // the shared-informers client and token controller.
@@ -551,6 +572,7 @@ func CreateControllerContext(s *config.CompletedConfig, rootClientBuilder, clien
 	return ctx, nil
 }
 
+//StartControllers启动了带有specified ControllerContext的a set of controllers
 // StartControllers starts a set of controllers with a specified ControllerContext
 func StartControllers(ctx context.Context, controllerCtx ControllerContext, startSATokenController InitFunc, controllers map[string]InitFunc,
 	unsecuredMux *mux.PathRecorderMux, healthzHandler *controllerhealthz.MutableHealthzHandler) error {
@@ -615,6 +637,7 @@ func StartControllers(ctx context.Context, controllerCtx ControllerContext, star
 	return nil
 }
 
+//serviceAccountTokenControllerStarter必须首先运行，为其他controllers构建permissions
 // serviceAccountTokenControllerStarter is special because it must run first to set up permissions for other controllers.
 // It cannot use the "normal" client builder, so it tracks its own. It must also avoid being included in the "normal"
 // init map so that it can always run first.
@@ -683,6 +706,7 @@ func readCA(file string) ([]byte, error) {
 	return rootCA, err
 }
 
+//createClientBuilders依据given configuration去构建clientBuilder和rootClientBuilder
 // createClientBuilders creates clientBuilder and rootClientBuilder from the given configuration
 func createClientBuilders(c *config.CompletedConfig) (clientBuilder clientbuilder.ControllerClientBuilder, rootClientBuilder clientbuilder.ControllerClientBuilder) {
 	rootClientBuilder = clientbuilder.SimpleControllerClientBuilder{
@@ -705,6 +729,7 @@ func createClientBuilders(c *config.CompletedConfig) (clientBuilder clientbuilde
 	return
 }
 
+//leaderElectAndRun进行leader election，一旦leader确定会运行callbacks
 // leaderElectAndRun runs the leader election, and runs the callbacks once the leader lease is acquired.
 // TODO: extract this function into staging/controller-manager
 func leaderElectAndRun(c *config.CompletedConfig, lockIdentity string, electionChecker *leaderelection.HealthzAdaptor, resourceLock string, leaseName string, callbacks leaderelection.LeaderCallbacks) {
@@ -734,6 +759,7 @@ func leaderElectAndRun(c *config.CompletedConfig, lockIdentity string, electionC
 	panic("unreachable")
 }
 
+//createInitializersFunc创建了一个initializersFunc,其可以运行所有的initializer
 // createInitializersFunc creates a initializersFunc that returns all initializer
 //
 //	with expected as the result after filtering through filterFunc.

@@ -28,7 +28,6 @@ import (
 	"time"
 
 	"k8s.io/client-go/informers/networking/v1alpha1"
-	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/features"
 
 	v1 "k8s.io/api/core/v1"
@@ -77,6 +76,7 @@ const (
 	defaultNodeMaskCIDRIPv6 = 64
 )
 
+//ServiceController
 func startServiceController(ctx context.Context, controllerContext ControllerContext) (controller.Interface, bool, error) {
 	serviceController, err := servicecontroller.New(
 		controllerContext.Cloud,
@@ -95,6 +95,7 @@ func startServiceController(ctx context.Context, controllerContext ControllerCon
 	return nil, true, nil
 }
 
+//NodeIpamController
 func startNodeIpamController(ctx context.Context, controllerContext ControllerContext) (controller.Interface, bool, error) {
 	var serviceCIDR *net.IPNet
 	var secondaryServiceCIDR *net.IPNet
@@ -166,6 +167,7 @@ func startNodeIpamController(ctx context.Context, controllerContext ControllerCo
 	return nil, true, nil
 }
 
+//NodeLifecycleController
 func startNodeLifecycleController(ctx context.Context, controllerContext ControllerContext) (controller.Interface, bool, error) {
 	lifecycleController, err := lifecyclecontroller.NewNodeLifecycleController(
 		ctx,
@@ -192,6 +194,7 @@ func startNodeLifecycleController(ctx context.Context, controllerContext Control
 	return nil, true, nil
 }
 
+//CloudNodeLifecycleController
 func startCloudNodeLifecycleController(ctx context.Context, controllerContext ControllerContext) (controller.Interface, bool, error) {
 	cloudNodeLifecycleController, err := cloudnodelifecyclecontroller.NewCloudNodeLifecycleController(
 		controllerContext.InformerFactory.Core().V1().Nodes(),
@@ -211,6 +214,7 @@ func startCloudNodeLifecycleController(ctx context.Context, controllerContext Co
 	return nil, true, nil
 }
 
+//RouteController
 func startRouteController(ctx context.Context, controllerContext ControllerContext) (controller.Interface, bool, error) {
 	if !controllerContext.ComponentConfig.KubeCloudShared.AllocateNodeCIDRs || !controllerContext.ComponentConfig.KubeCloudShared.ConfigureCloudRoutes {
 		klog.Infof("Will not configure cloud provider routes for allocate-node-cidrs: %v, configure-cloud-routes: %v.", controllerContext.ComponentConfig.KubeCloudShared.AllocateNodeCIDRs, controllerContext.ComponentConfig.KubeCloudShared.ConfigureCloudRoutes)
@@ -240,6 +244,7 @@ func startRouteController(ctx context.Context, controllerContext ControllerConte
 	return nil, true, nil
 }
 
+//PersistentVolumeBinderController
 func startPersistentVolumeBinderController(ctx context.Context, controllerContext ControllerContext) (controller.Interface, bool, error) {
 	plugins, err := ProbeControllerVolumePlugins(controllerContext.Cloud, controllerContext.ComponentConfig.PersistentVolumeBinderController.VolumeConfiguration)
 	if err != nil {
@@ -273,6 +278,7 @@ func startPersistentVolumeBinderController(ctx context.Context, controllerContex
 	return nil, true, nil
 }
 
+//AttachDetachController
 func startAttachDetachController(ctx context.Context, controllerContext ControllerContext) (controller.Interface, bool, error) {
 	csiNodeInformer := controllerContext.InformerFactory.Storage().V1().CSINodes()
 	csiDriverInformer := controllerContext.InformerFactory.Storage().V1().CSIDrivers()
@@ -314,6 +320,7 @@ func startAttachDetachController(ctx context.Context, controllerContext Controll
 	return nil, true, nil
 }
 
+//VolumeExpandController
 func startVolumeExpandController(ctx context.Context, controllerContext ControllerContext) (controller.Interface, bool, error) {
 	plugins, err := ProbeExpandableVolumePlugins(controllerContext.ComponentConfig.PersistentVolumeBinderController.VolumeConfiguration)
 	if err != nil {
@@ -345,6 +352,7 @@ func startVolumeExpandController(ctx context.Context, controllerContext Controll
 
 }
 
+//EphemeralVolumeController
 func startEphemeralVolumeController(ctx context.Context, controllerContext ControllerContext) (controller.Interface, bool, error) {
 	ephemeralController, err := ephemeral.NewController(
 		controllerContext.ClientBuilder.ClientOrDie("ephemeral-volume-controller"),
@@ -357,6 +365,7 @@ func startEphemeralVolumeController(ctx context.Context, controllerContext Contr
 	return nil, true, nil
 }
 
+//EndpointController
 func startEndpointController(ctx context.Context, controllerCtx ControllerContext) (controller.Interface, bool, error) {
 	go endpointcontroller.NewEndpointController(
 		controllerCtx.InformerFactory.Core().V1().Pods(),
@@ -368,6 +377,7 @@ func startEndpointController(ctx context.Context, controllerCtx ControllerContex
 	return nil, true, nil
 }
 
+//ReplicationController
 func startReplicationController(ctx context.Context, controllerContext ControllerContext) (controller.Interface, bool, error) {
 	go replicationcontroller.NewReplicationManager(
 		controllerContext.InformerFactory.Core().V1().Pods(),
@@ -378,6 +388,7 @@ func startReplicationController(ctx context.Context, controllerContext Controlle
 	return nil, true, nil
 }
 
+//PodGCController
 func startPodGCController(ctx context.Context, controllerContext ControllerContext) (controller.Interface, bool, error) {
 	go podgc.NewPodGC(
 		ctx,
@@ -389,6 +400,7 @@ func startPodGCController(ctx context.Context, controllerContext ControllerConte
 	return nil, true, nil
 }
 
+//ResourceQuotaController
 func startResourceQuotaController(ctx context.Context, controllerContext ControllerContext) (controller.Interface, bool, error) {
 	resourceQuotaControllerClient := controllerContext.ClientBuilder.ClientOrDie("resourcequota-controller")
 	resourceQuotaControllerDiscoveryClient := controllerContext.ClientBuilder.DiscoveryClientOrDie("resourcequota-controller")
@@ -420,6 +432,7 @@ func startResourceQuotaController(ctx context.Context, controllerContext Control
 	return nil, true, nil
 }
 
+//NamespaceController
 func startNamespaceController(ctx context.Context, controllerContext ControllerContext) (controller.Interface, bool, error) {
 	// the namespace cleanup controller is very chatty.  It makes lots of discovery calls and then it makes lots of delete calls
 	// the ratelimiter negatively affects its speed.  Deleting 100 total items in a namespace (that's only a few of each resource
@@ -431,6 +444,7 @@ func startNamespaceController(ctx context.Context, controllerContext ControllerC
 	return startModifiedNamespaceController(ctx, controllerContext, namespaceKubeClient, nsKubeconfig)
 }
 
+//ModifiedNamespaceController
 func startModifiedNamespaceController(ctx context.Context, controllerContext ControllerContext, namespaceKubeClient clientset.Interface, nsKubeconfig *restclient.Config) (controller.Interface, bool, error) {
 
 	metadataClient, err := metadata.NewForConfig(nsKubeconfig)
@@ -453,6 +467,7 @@ func startModifiedNamespaceController(ctx context.Context, controllerContext Con
 	return nil, true, nil
 }
 
+//ServiceAccountController
 func startServiceAccountController(ctx context.Context, controllerContext ControllerContext) (controller.Interface, bool, error) {
 	sac, err := serviceaccountcontroller.NewServiceAccountsController(
 		controllerContext.InformerFactory.Core().V1().ServiceAccounts(),
@@ -467,6 +482,7 @@ func startServiceAccountController(ctx context.Context, controllerContext Contro
 	return nil, true, nil
 }
 
+//TTLController
 func startTTLController(ctx context.Context, controllerContext ControllerContext) (controller.Interface, bool, error) {
 	go ttlcontroller.NewTTLController(
 		controllerContext.InformerFactory.Core().V1().Nodes(),
@@ -475,6 +491,7 @@ func startTTLController(ctx context.Context, controllerContext ControllerContext
 	return nil, true, nil
 }
 
+//GarbageCollectorController
 func startGarbageCollectorController(ctx context.Context, controllerContext ControllerContext) (controller.Interface, bool, error) {
 	if !controllerContext.ComponentConfig.GarbageCollectorController.EnableGarbageCollector {
 		return nil, false, nil
@@ -519,6 +536,7 @@ func startGarbageCollectorController(ctx context.Context, controllerContext Cont
 	return garbageCollector, true, nil
 }
 
+//PVCProtectionController
 func startPVCProtectionController(ctx context.Context, controllerContext ControllerContext) (controller.Interface, bool, error) {
 	pvcProtectionController, err := pvcprotection.NewPVCProtectionController(
 		controllerContext.InformerFactory.Core().V1().PersistentVolumeClaims(),
@@ -532,6 +550,7 @@ func startPVCProtectionController(ctx context.Context, controllerContext Control
 	return nil, true, nil
 }
 
+//PVProtectionController
 func startPVProtectionController(ctx context.Context, controllerContext ControllerContext) (controller.Interface, bool, error) {
 	go pvprotection.NewPVProtectionController(
 		controllerContext.InformerFactory.Core().V1().PersistentVolumes(),
@@ -540,6 +559,7 @@ func startPVProtectionController(ctx context.Context, controllerContext Controll
 	return nil, true, nil
 }
 
+//TTLAfterFinishedController
 func startTTLAfterFinishedController(ctx context.Context, controllerContext ControllerContext) (controller.Interface, bool, error) {
 	go ttlafterfinished.New(
 		controllerContext.InformerFactory.Batch().V1().Jobs(),
@@ -548,6 +568,7 @@ func startTTLAfterFinishedController(ctx context.Context, controllerContext Cont
 	return nil, true, nil
 }
 
+//如果cidr的长度无效，或者parse failed， processCIDRs返回cidrs error
 // processCIDRs is a helper function that works on a comma separated cidrs and returns
 // a list of typed cidrs
 // error if failed to parse any of the cidrs or invalid length of cidrs
@@ -590,6 +611,8 @@ func processCIDRs(cidrsList string) ([]*net.IPNet, bool, error) {
 	return cidrs, dualstack, nil
 }
 
+//setNodeCIDRMaskSizes返回IPv4 and IPv6 node cidr mask sizes
+//如果没有提供相应的value, 则返回默认的IPv4 and IPv6 cidr mask sizes
 // setNodeCIDRMaskSizes returns the IPv4 and IPv6 node cidr mask sizes to the value provided
 // for --node-cidr-mask-size-ipv4 and --node-cidr-mask-size-ipv6 respectively. If value not provided,
 // then it will return default IPv4 and IPv6 cidr mask sizes.

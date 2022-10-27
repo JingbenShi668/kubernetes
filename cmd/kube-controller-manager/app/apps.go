@@ -32,6 +32,7 @@ import (
 	"k8s.io/kubernetes/pkg/controller/statefulset"
 )
 
+//DaemonSetController
 func startDaemonSetController(ctx context.Context, controllerContext ControllerContext) (controller.Interface, bool, error) {
 	dsc, err := daemon.NewDaemonSetsController(
 		controllerContext.InformerFactory.Apps().V1().DaemonSets(),
@@ -48,6 +49,7 @@ func startDaemonSetController(ctx context.Context, controllerContext ControllerC
 	return nil, true, nil
 }
 
+//StatefulSetController
 func startStatefulSetController(ctx context.Context, controllerContext ControllerContext) (controller.Interface, bool, error) {
 	go statefulset.NewStatefulSetController(
 		controllerContext.InformerFactory.Core().V1().Pods(),
@@ -59,6 +61,7 @@ func startStatefulSetController(ctx context.Context, controllerContext Controlle
 	return nil, true, nil
 }
 
+//ReplicaSetController
 func startReplicaSetController(ctx context.Context, controllerContext ControllerContext) (controller.Interface, bool, error) {
 	go replicaset.NewReplicaSetController(
 		controllerContext.InformerFactory.Apps().V1().ReplicaSets(),
@@ -69,6 +72,7 @@ func startReplicaSetController(ctx context.Context, controllerContext Controller
 	return nil, true, nil
 }
 
+//DeploymentController
 func startDeploymentController(ctx context.Context, controllerContext ControllerContext) (controller.Interface, bool, error) {
 	dc, err := deployment.NewDeploymentController(
 		controllerContext.InformerFactory.Apps().V1().Deployments(),

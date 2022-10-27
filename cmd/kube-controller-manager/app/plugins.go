@@ -23,8 +23,6 @@ import (
 
 	"fmt"
 
-	"k8s.io/klog/v2"
-
 	// Cloud providers
 	cloudprovider "k8s.io/cloud-provider"
 	// ensure the cloud providers are installed
@@ -45,6 +43,7 @@ import (
 	"k8s.io/utils/exec"
 )
 
+//ProbeAttachableVolumePlugins为attach/detach controller收集全部的volume plugins
 // ProbeAttachableVolumePlugins collects all volume plugins for the attach/
 // detach controller.
 // The list of plugins is manually compiled. This code and the plugin
@@ -62,13 +61,16 @@ func ProbeAttachableVolumePlugins() ([]volume.VolumePlugin, error) {
 	return allPlugins, nil
 }
 
+//GetDynamicPluginProber为attach/detach controller获取dynamically discoverable plugins的probers
 // GetDynamicPluginProber gets the probers of dynamically discoverable plugins
 // for the attach/detach controller.
+//目前只有Flexvolume plugins是dynamically discoverable
 // Currently only Flexvolume plugins are dynamically discoverable.
 func GetDynamicPluginProber(config persistentvolumeconfig.VolumeConfiguration) volume.DynamicPluginProber {
 	return flexvolume.GetDynamicPluginProber(config.FlexVolumePluginDir, exec.New() /*exec.Interface*/)
 }
 
+//ProbeExpandableVolumePlugins返回expandable的volume plugins
 // ProbeExpandableVolumePlugins returns volume plugins which are expandable
 func ProbeExpandableVolumePlugins(config persistentvolumeconfig.VolumeConfiguration) ([]volume.VolumePlugin, error) {
 	var err error
@@ -81,6 +83,8 @@ func ProbeExpandableVolumePlugins(config persistentvolumeconfig.VolumeConfigurat
 	return allPlugins, nil
 }
 
+//ProbeControllerVolumePlugins收集全部的persistent volume plugins
+//这些persistent volume plugins实现了provisioner/recycler/deleter interface
 // ProbeControllerVolumePlugins collects all persistent volume plugins into an
 // easy to use list. Only volume plugins that implement any of
 // provisioner/recycler/deleter interface should be returned.
@@ -91,10 +95,11 @@ func ProbeControllerVolumePlugins(cloud cloudprovider.Interface, config persiste
 	// by dynamic linking or other "magic".  Plugins will be analyzed and
 	// initialized later.
 
-	// Each plugin can make use of VolumeConfig.  The single arg to this func contains *all* enumerated
+	// Each plugin can make use of VolumeConfig.  The single arg to this func   contains *all* enumerated
 	// options meant to configure volume plugins.  From that single config, create an instance of volume.VolumeConfig
 	// for a specific plugin and pass that instance to the plugin's ProbeVolumePlugins(config) func.
 
+	//HostPath recycling仅仅针对testing and development
 	// HostPath recycling is for testing and development purposes only!
 	hostPathConfig := volume.VolumeConfig{
 		RecyclerMinimumTimeout:   int(config.PersistentVolumeRecyclerConfiguration.MinimumTimeoutHostPath),
@@ -129,6 +134,7 @@ func ProbeControllerVolumePlugins(cloud cloudprovider.Interface, config persiste
 	return allPlugins, nil
 }
 
+//AttemptToLoadRecycler从filepath构建一个pod, 用作volume的recycler
 // AttemptToLoadRecycler tries decoding a pod from a filepath for use as a recycler for a volume.
 // If successful, this method will set the recycler on the config.
 // If unsuccessful, an error is returned. Function is exported for reuse downstream.
