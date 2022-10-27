@@ -32,7 +32,6 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/klog/v2"
 	configv1 "k8s.io/kube-scheduler/config/v1"
 	schedulerapi "k8s.io/kubernetes/pkg/scheduler/apis/config"
 	"k8s.io/kubernetes/pkg/scheduler/apis/config/scheme"
@@ -57,24 +56,29 @@ const (
 // ErrNoNodesAvailable is used to describe the error that no nodes available to schedule pods.
 var ErrNoNodesAvailable = fmt.Errorf("no nodes available to schedule pods")
 
+//Scheduler观察没有被调度的pod, 为其寻找合适的node,并将绑定信息写回给api server
 // Scheduler watches for new unscheduled pods. It attempts to find
 // nodes that they fit on and writes bindings back to the api server.
 type Scheduler struct {
+	//Cache change会被观测到
 	// It is expected that changes made via Cache will be observed
 	// by NodeLister and Algorithm.
 	Cache internalcache.Cache
 
 	Extenders []framework.Extender
 
+	//NextPod是一个function,直到下一个pod是available.
 	// NextPod should be a function that blocks until the next pod
 	// is available. We don't use a channel for this, because scheduling
 	// a pod may take some amount of time and we don't want pods to get
 	// stale while they sit in a channel.
 	NextPod func() *framework.QueuedPodInfo
 
+	//当调度失败的时候，FailureHandler会被回调
 	// FailureHandler is called upon a scheduling failure.
 	FailureHandler FailureHandlerFn
 
+	//SchedulePod方法会将给定pod调度到node傻姑娘
 	// SchedulePod tries to schedule the given pod to one of the nodes in the node list.
 	// Return a struct of ScheduleResult with the name of suggested host on success,
 	// otherwise will return a FitError with reasons.
@@ -83,9 +87,11 @@ type Scheduler struct {
 	// Close this to shut down the scheduler.
 	StopEverything <-chan struct{}
 
+	//SchedulingQueue保存着待调度的pod
 	// SchedulingQueue holds pods to be scheduled
 	SchedulingQueue internalqueue.SchedulingQueue
 
+	//scheduling profiles调度配置文件
 	// Profiles are the scheduling profiles.
 	Profiles profile.Map
 
@@ -123,17 +129,18 @@ type schedulerOptions struct {
 // Option configures a Scheduler
 type Option func(*schedulerOptions)
 
+//ScheduleResult显示scheduling a pod的结果
 // ScheduleResult represents the result of scheduling a pod.
 type ScheduleResult struct {
-	// Name of the selected node.
+	// Name of the selected node. //被选中的node的名字
 	SuggestedHost string
 	// The number of nodes the scheduler evaluated the pod against in the filtering
 	// phase and beyond.
-	EvaluatedNodes int
+	EvaluatedNodes int //在filtering阶段scheduler评估的node数量
 	// The number of nodes out of the evaluated ones that fit the pod.
-	FeasibleNodes int
+	FeasibleNodes int //适合pod的node的数量
 
-	// The reason records the failure in scheduling cycle.
+	// The reason records the failure in scheduling cycle. //调度循环失败的原因
 	reason string
 	// The nominating info for scheduling cycle.
 	nominatingInfo *framework.NominatingInfo

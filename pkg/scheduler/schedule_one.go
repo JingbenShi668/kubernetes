@@ -31,7 +31,6 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	clientset "k8s.io/client-go/kubernetes"
-	"k8s.io/klog/v2"
 	extenderv1 "k8s.io/kube-scheduler/extender/v1"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/kubernetes/pkg/apis/core/validation"
@@ -389,6 +388,7 @@ func (sched *Scheduler) schedulePod(ctx context.Context, fwk framework.Framework
 
 // Filters the nodes to find the ones that fit the pod based on the framework
 // filter plugins and filter extenders.
+// predicate流程，通过filter plugins和filter extenders挑选最适合pod的nodes
 func (sched *Scheduler) findNodesThatFitPod(ctx context.Context, fwk framework.Framework, state *framework.CycleState, pod *v1.Pod) ([]*v1.Node, framework.Diagnosis, error) {
 	diagnosis := framework.Diagnosis{
 		NodeToStatusMap:      make(framework.NodeToStatusMap),
