@@ -62,7 +62,6 @@ import (
 	"k8s.io/component-base/metrics/prometheus/slis"
 	"k8s.io/component-base/version"
 	"k8s.io/component-base/version/verflag"
-	"k8s.io/klog/v2"
 	"k8s.io/kube-proxy/config/v1alpha1"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/cluster/ports"
@@ -91,24 +90,33 @@ func init() {
 	utilruntime.Must(metricsfeatures.AddFeatureGates(utilfeature.DefaultMutableFeatureGate))
 }
 
+//proxyRun interface运行specified ProxyServer
 // proxyRun defines the interface to run a specified ProxyServer
 type proxyRun interface {
 	Run() error
 }
 
+//Options struct包含了create and run a proxy server必需的信息
 // Options contains everything necessary to create and run a proxy server.
 type Options struct {
+	//ConfigFile是proxy server配置文件的位置
 	// ConfigFile is the location of the proxy server's configuration file.
 	ConfigFile string
+	//WriteConfigTo是默认configuration将被写入的路径
 	// WriteConfigTo is the path where the default configuration will be written.
 	WriteConfigTo string
+	//CleanupAndExit为true的时候，需要保证proxy server清理完成所有的iptables和ipvs rules，然后exit
 	// CleanupAndExit, when true, makes the proxy server clean up iptables and ipvs rules, then exit.
 	CleanupAndExit bool
+	//如果kube-proxy是在Windows上作为一个service运行，那么WindowsService需要被设置为true
 	// WindowsService should be set to true if kube-proxy is running as a service on Windows.
+	//WindowsService仅仅在Windows builds的时候会被注册
 	// Its corresponding flag only gets registered in Windows builds
 	WindowsService bool
+	//config是proxy server的configuration object
 	// config is the proxy server's configuration object.
 	config *kubeproxyconfig.KubeProxyConfiguration
+	//watcher被用于监控ConfigFile的更新、改变
 	// watcher is used to watch on the update change of ConfigFile
 	watcher filesystem.FSWatcher
 	// proxyServer is the interface to run the proxy server
