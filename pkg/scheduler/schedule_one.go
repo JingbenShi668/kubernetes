@@ -803,6 +803,7 @@ func (sched *Scheduler) assume(assumed *v1.Pod, host string) error {
 }
 
 // bind binds a pod to a given node defined in a binding object.
+//binding优先级
 // The precedence for binding is: (1) extenders and (2) framework plugins.
 // We expect this to run asynchronously, so we handle binding metrics internally.
 func (sched *Scheduler) bind(ctx context.Context, fwk framework.Framework, assumed *v1.Pod, targetNode string, state *framework.CycleState) (status *framework.Status) {
@@ -891,6 +892,7 @@ func (sched *Scheduler) handleSchedulingFailure(ctx context.Context, fwk framewo
 		klog.ErrorS(err, "Error scheduling pod; retrying", "pod", klog.KObj(pod))
 	}
 
+	//检查Pod在informer cache中是否存在
 	// Check if the Pod exists in informer cache.
 	podLister := fwk.SharedInformerFactory().Core().V1().Pods().Lister()
 	cachedPod, e := podLister.Pods(pod.Namespace).Get(pod.Name)
@@ -912,6 +914,7 @@ func (sched *Scheduler) handleSchedulingFailure(ctx context.Context, fwk framewo
 		}
 	}
 
+	//更新scheduling queue
 	// Update the scheduling queue with the nominated pod information. Without
 	// this, there would be a race condition between the next scheduling cycle
 	// and the time the scheduler receives a Pod Update for the nominated pod.
