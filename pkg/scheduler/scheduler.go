@@ -146,6 +146,7 @@ type ScheduleResult struct {
 	nominatingInfo *framework.NominatingInfo
 }
 
+//WithComponentConfigVersion设置针对KubeSchedulerConfiguration version所要使用的component config version
 // WithComponentConfigVersion sets the component config version to the
 // KubeSchedulerConfiguration version used. The string should be the full
 // scheme group/version of the external type we converted from (for example
@@ -156,6 +157,7 @@ func WithComponentConfigVersion(apiVersion string) Option {
 	}
 }
 
+//WithKubeConfig为Scheduler设置kube config
 // WithKubeConfig sets the kube config for Scheduler.
 func WithKubeConfig(cfg *restclient.Config) Option {
 	return func(o *schedulerOptions) {
@@ -163,6 +165,7 @@ func WithKubeConfig(cfg *restclient.Config) Option {
 	}
 }
 
+//WithProfiles为Scheduler设置配置，默认使用default-scheduler
 // WithProfiles sets profiles for Scheduler. By default, there is one profile
 // with the name "default-scheduler".
 func WithProfiles(p ...schedulerapi.KubeSchedulerProfile) Option {
@@ -172,6 +175,7 @@ func WithProfiles(p ...schedulerapi.KubeSchedulerProfile) Option {
 	}
 }
 
+//WithParallelism设置scheduler algorithms的并行携程数量，默认是16
 // WithParallelism sets the parallelism for all scheduler algorithms. Default is 16.
 func WithParallelism(threads int32) Option {
 	return func(o *schedulerOptions) {
@@ -179,6 +183,7 @@ func WithParallelism(threads int32) Option {
 	}
 }
 
+//WithPercentageOfNodesToScore设置Scheduler的百分比分数
 // WithPercentageOfNodesToScore sets percentageOfNodesToScore for Scheduler.
 // The default value of 0 will use an adaptive percentage: 50 - (num of nodes)/125.
 func WithPercentageOfNodesToScore(percentageOfNodesToScore *int32) Option {
@@ -211,6 +216,7 @@ func WithPodMaxBackoffSeconds(podMaxBackoffSeconds int64) Option {
 	}
 }
 
+//为PriorityQueue设置pod最长时间不可调度Duration
 // WithPodMaxInUnschedulablePodsDuration sets podMaxInUnschedulablePodsDuration for PriorityQueue.
 func WithPodMaxInUnschedulablePodsDuration(duration time.Duration) Option {
 	return func(o *schedulerOptions) {
@@ -218,6 +224,7 @@ func WithPodMaxInUnschedulablePodsDuration(duration time.Duration) Option {
 	}
 }
 
+//为Scheduler设置extenders
 // WithExtenders sets extenders for the Scheduler
 func WithExtenders(e ...schedulerapi.Extender) Option {
 	return func(o *schedulerOptions) {
@@ -350,13 +357,16 @@ func New(client clientset.Interface,
 	return sched, nil
 }
 
+//开始watching和scheduling
 // Run begins watching and scheduling. It starts scheduling and blocked until the context is done.
 func (sched *Scheduler) Run(ctx context.Context) {
 	sched.SchedulingQueue.Run()
 
+	//在一个goroutine中启动scheduleOne loop，因为scheduleOne函数会从SchedulingQueue取出下一个待调度的item
 	// We need to start scheduleOne loop in a dedicated goroutine,
 	// because scheduleOne function hangs on getting the next item
 	// from the SchedulingQueue.
+	//如果没有新的pod要被调度，或者cheduleOne loop goroutine已经完成调度，则SchedulingQueue关闭
 	// If there are no new pods to schedule, it will be hanging there
 	// and if done in this goroutine it will be blocking closing
 	// SchedulingQueue, in effect causing a deadlock on shutdown.
@@ -446,6 +456,8 @@ func unionedGVKs(m map[framework.ClusterEvent]sets.String) map[framework.GVK]fra
 	return gvkMap
 }
 
+//创建新的shared index informer
+//non-conflict indexers可以添加到PodInformer
 // newPodInformer creates a shared index informer that returns only non-terminal pods.
 // The PodInformer allows indexers to be added, but note that only non-conflict indexers are allowed.
 func newPodInformer(cs clientset.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
