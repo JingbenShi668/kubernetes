@@ -50,13 +50,13 @@ const (
 	// in each scheduling cycle. This is a semi-arbitrary value to ensure that a
 	// certain minimum of nodes are checked for feasibility. This in turn helps
 	// ensure a minimum level of spreading.
-	minFeasibleNodesToFind = 100
-	//minFeasibleNodesToFind是在scheduling cycle中参与预选的最小节点数量
+	minFeasibleNodesToFind = 100 //minFeasibleNodesToFind是在是在scheduling cycle中参与预选的最小节点number
+
 	// minFeasibleNodesPercentageToFind is the minimum percentage of nodes that
 	// would be scored in each scheduling cycle. This is a semi-arbitrary value
 	// to ensure that a certain minimum of nodes are checked for feasibility.
 	// This in turn helps ensure a minimum level of spreading.
-	minFeasibleNodesPercentageToFind = 5
+	minFeasibleNodesPercentageToFind = 5 //minFeasibleNodesToFind是在scheduling cycle中参与预选的最小节点percentage
 )
 
 //scheduleOne 完成一个pod的完整scheduling workflow
@@ -397,6 +397,8 @@ func (sched *Scheduler) schedulePod(ctx context.Context, fwk framework.Framework
 	}, err
 }
 
+//预选过程：预处理->过滤->用户自定义过滤->结束
+//过滤阶段，此阶段获取过滤之后所有可用的节点，供下一阶段使用，即feasibleNodes
 // Filters the nodes to find the ones that fit the pod based on the framework
 // filter plugins and filter extenders.
 // predicate流程，通过filter plugins和filter extenders挑选最适合pod的nodes
@@ -410,8 +412,9 @@ func (sched *Scheduler) findNodesThatFitPod(ctx context.Context, fwk framework.F
 	if err != nil {
 		return nil, diagnosis, err
 	}
+
 	// Run "prefilter" plugins.
-	preRes, s := fwk.RunPreFilterPlugins(ctx, state, pod)
+	preRes, s := fwk.RunPreFilterPlugins(ctx, state, pod) //运行过滤前的插件
 	if !s.IsSuccess() {
 		if !s.IsUnschedulable() {
 			return nil, diagnosis, s.AsError()
@@ -430,6 +433,8 @@ func (sched *Scheduler) findNodesThatFitPod(ctx context.Context, fwk framework.F
 	// "NominatedNodeName" can potentially be set in a previous scheduling cycle as a result of qi.
 	// This node is likely the only candidate that will fit the pod, and hence we try it first before iterating over all nodes.
 	if len(pod.Status.NominatedNodeName) > 0 {
+		//evaluateNominatedNode将某个节点单独进行过滤
+		//如果pod指定了某个Node上运行，那么这个节点可能是唯一适合pod的节点，那么会在过滤所有节点之前，检查该Node
 		feasibleNodes, err := sched.evaluateNominatedNode(ctx, pod, fwk, state, diagnosis)
 		if err != nil {
 			klog.ErrorS(err, "Evaluation failed on nominated node", "pod", klog.KObj(pod), "node", pod.Status.NominatedNodeName)
@@ -451,6 +456,8 @@ func (sched *Scheduler) findNodesThatFitPod(ctx context.Context, fwk framework.F
 			nodes = append(nodes, nInfo)
 		}
 	}
+
+	//findNodesThatPassFilters将所有节点进行预选过滤
 	feasibleNodes, err := sched.findNodesThatPassFilters(ctx, fwk, state, pod, diagnosis, nodes)
 	//总是更新sched.nextStartNodeIndex,而无论是否有error发生
 	// always try to update the sched.nextStartNodeIndex regardless of whether an error has occurred
@@ -461,6 +468,7 @@ func (sched *Scheduler) findNodesThatFitPod(ctx context.Context, fwk framework.F
 		return nil, diagnosis, err
 	}
 
+	//findNodesThatPassExtenders将经过预选过滤的node再通过extender过滤一遍，这是k8s留给用户的自定义过滤器
 	feasibleNodes, err = findNodesThatPassExtenders(sched.Extenders, pod, feasibleNodes, diagnosis.NodeToStatusMap)
 	if err != nil {
 		return nil, diagnosis, err
@@ -468,6 +476,9 @@ func (sched *Scheduler) findNodesThatFitPod(ctx context.Context, fwk framework.F
 	return feasibleNodes, diagnosis, nil
 }
 
+//NominatedNode, 提名节点
+//evaluateNominatedNode将某个节点单独进行过滤
+//如果pod指定了某个Node上运行，那么这个节点可能是唯一适合pod的节点，那么会在过滤所有节点之前，检查该Node
 func (sched *Scheduler) evaluateNominatedNode(ctx context.Context, pod *v1.Pod, fwk framework.Framework, state *framework.CycleState, diagnosis framework.Diagnosis) ([]*v1.Node, error) {
 	nnn := pod.Status.NominatedNodeName
 	nodeInfo, err := sched.nodeInfoSnapshot.Get(nnn)
@@ -488,6 +499,7 @@ func (sched *Scheduler) evaluateNominatedNode(ctx context.Context, pod *v1.Pod, 
 	return feasibleNodes, nil
 }
 
+//findNodesThatPassFilters将所有节点进行预选过滤
 //寻找通过filter plugins过滤的node
 // findNodesThatPassFilters finds the nodes that fit the filter plugins.
 func (sched *Scheduler) findNodesThatPassFilters(
@@ -517,7 +529,7 @@ func (sched *Scheduler) findNodesThatPassFilters(
 	var feasibleNodesLen int32
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	checkNode := func(i int) {
+	checkNode := func(i int) { //检查所有node是否符合运行pod的条件，符合条件的node加入到feasibelNodes列表
 		//从previous scheduling cycle剩下的node开始check，确保所有的node都有同样examined的机会
 		// We check the nodes starting from where we left off in the previous scheduling cycle,
 		// this is to make sure all nodes have the same chance of being examined across pods.
@@ -597,6 +609,7 @@ func (sched *Scheduler) numFeasibleNodesToFind(percentageOfNodesToScore *int32, 
 	return numNodes
 }
 
+//findNodesThatPassExtenders将经过预选过滤的node再通过extender过滤一遍，这是k8s留给用户的自定义过滤器
 //通过Extenders的nodes
 func findNodesThatPassExtenders(extenders []framework.Extender, pod *v1.Pod, feasibleNodes []*v1.Node, statuses framework.NodeToStatusMap) ([]*v1.Node, error) {
 	// Extenders are called sequentially. //Extenders被顺序调用

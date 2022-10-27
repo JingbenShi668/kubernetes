@@ -78,10 +78,11 @@ type Scheduler struct {
 	// FailureHandler is called upon a scheduling failure.
 	FailureHandler FailureHandlerFn
 
-	//SchedulePod方法会将给定pod调度到node傻姑娘
+	//SchedulePod方法会将给定pod调度到node上
 	// SchedulePod tries to schedule the given pod to one of the nodes in the node list.
 	// Return a struct of ScheduleResult with the name of suggested host on success,
 	// otherwise will return a FitError with reasons.
+	//Scheduler结构体定义了调度器方法
 	SchedulePod func(ctx context.Context, fwk framework.Framework, state *framework.CycleState, pod *v1.Pod) (ScheduleResult, error)
 
 	// Close this to shut down the scheduler.
