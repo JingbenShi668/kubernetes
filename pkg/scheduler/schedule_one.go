@@ -51,6 +51,7 @@ const (
 	// certain minimum of nodes are checked for feasibility. This in turn helps
 	// ensure a minimum level of spreading.
 	minFeasibleNodesToFind = 100
+	//minFeasibleNodesToFind是在scheduling cycle中参与预选的最小节点数量
 	// minFeasibleNodesPercentageToFind is the minimum percentage of nodes that
 	// would be scored in each scheduling cycle. This is a semi-arbitrary value
 	// to ensure that a certain minimum of nodes are checked for feasibility.
@@ -61,7 +62,7 @@ const (
 //scheduleOne 完成一个pod的完整scheduling workflow
 // scheduleOne does the entire scheduling workflow for a single pod. It is serialized on the scheduling algorithm's host fitting.
 func (sched *Scheduler) scheduleOne(ctx context.Context) {
-	podInfo := sched.NextPod()
+	podInfo := sched.NextPod()  //从优先队列中获取优先级最高的待调度pod对象
 	//如果schedulerQueue被关闭，则pod会是nil
 	// pod could be nil when schedulerQueue is closed
 	if podInfo == nil || podInfo.Pod == nil {
@@ -94,6 +95,7 @@ func (sched *Scheduler) scheduleOne(ctx context.Context) {
 	schedulingCycleCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	//调度函数
 	scheduleResult, assumedPodInfo, err := sched.schedulingCycle(schedulingCycleCtx, state, fwk, podInfo, start, podsToActivate)
 	if err != nil {
 		sched.FailureHandler(schedulingCycleCtx, fwk, assumedPodInfo, err, scheduleResult.reason, scheduleResult.nominatingInfo, start)
@@ -341,7 +343,7 @@ func (sched *Scheduler) skipPodSchedule(fwk framework.Framework, pod *v1.Pod) bo
 
 // schedulePod tries to schedule the given pod to one of the nodes in the node list.
 // If it succeeds, it will return the name of the node. //调度成功，返回node name
-// If it fails, it will return a FitError with reasons. //调度数百，返回FitError
+// If it fails, it will return a FitError with reasons. //调度失败，返回FitError
 func (sched *Scheduler) schedulePod(ctx context.Context, fwk framework.Framework, state *framework.CycleState, pod *v1.Pod) (result ScheduleResult, err error) {
 	trace := utiltrace.New("Scheduling", utiltrace.Field{Key: "namespace", Value: pod.Namespace}, utiltrace.Field{Key: "name", Value: pod.Name})
 	defer trace.LogIfLong(100 * time.Millisecond)
@@ -355,13 +357,14 @@ func (sched *Scheduler) schedulePod(ctx context.Context, fwk framework.Framework
 		return result, ErrNoNodesAvailable
 	}
 
+	//为pod寻找合适的node
 	feasibleNodes, diagnosis, err := sched.findNodesThatFitPod(ctx, fwk, state, pod)
 	if err != nil {
 		return result, err
 	}
 	trace.Step("Computing predicates done")
 
-	if len(feasibleNodes) == 0 {
+	if len(feasibleNodes) == 0 {  //scheduler针对pod调度失败
 		return result, &framework.FitError{
 			Pod:         pod,
 			NumAllNodes: sched.nodeInfoSnapshot.NumNodes(),
@@ -378,18 +381,19 @@ func (sched *Scheduler) schedulePod(ctx context.Context, fwk framework.Framework
 		}, nil
 	}
 
+	//为pod找到可调度的nodes，且数量>1, 进入优选(打分)阶段
 	priorityList, err := prioritizeNodes(ctx, sched.Extenders, fwk, state, pod, feasibleNodes)
 	if err != nil {
 		return result, err
 	}
 
-	host, err := selectHost(priorityList)
-	trace.Step("Prioritizing done")
+	host, err := selectHost(priorityList) //选择得分最高的node
+	trace.Step("Prioritizing done") //优选过程完成
 
 	return ScheduleResult{
-		SuggestedHost:  host,
-		EvaluatedNodes: len(feasibleNodes) + len(diagnosis.NodeToStatusMap),
-		FeasibleNodes:  len(feasibleNodes),
+		SuggestedHost:  host, //为pod找到合适的node
+		EvaluatedNodes: len(feasibleNodes) + len(diagnosis.NodeToStatusMap), //预选阶段的node
+		FeasibleNodes:  len(feasibleNodes), //优选阶段的node
 	}, err
 }
 
@@ -562,6 +566,9 @@ func (sched *Scheduler) findNodesThatPassFilters(
 
 // numFeasibleNodesToFind returns the number of feasible nodes that once found, the scheduler stops
 // its search for more feasible nodes.
+//percentageOfNodesToScore 是调度器的性能优化，在k8s cluster中集群节点很多的情况下，只加载指定百分比的节点
+//这样在大规模集群中，可以显著提高调度性能
+//这个百分比数值默认为50%,即加载一般的节点
 func (sched *Scheduler) numFeasibleNodesToFind(percentageOfNodesToScore *int32, numAllNodes int32) (numNodes int32) {
 	if numAllNodes < minFeasibleNodesToFind {
 		return numAllNodes
@@ -940,6 +947,7 @@ func (sched *Scheduler) handleSchedulingFailure(ctx context.Context, fwk framewo
 	}
 }
 
+//如果message达到NoteLengthLimit,则会被截断
 // truncateMessage truncates a message if it hits the NoteLengthLimit.
 func truncateMessage(message string) string {
 	max := validation.NoteLengthLimit
