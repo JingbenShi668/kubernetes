@@ -23,7 +23,6 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/scheduler/framework"
 )
 
@@ -42,8 +41,10 @@ const (
 
 // preFilterState computed at PreFilter and used at Filter.
 type preFilterState struct {
+	//记录pod的反亲和性关系
 	// A map of topology pairs to the number of existing pods that has anti-affinity terms that match the "pod".
 	existingAntiAffinityCounts topologyToMatchedTermCount
+	//记录亲和性关系
 	// A map of topology pairs to the number of existing pods that match the affinity terms of the "pod".
 	affinityCounts topologyToMatchedTermCount
 	// A map of topology pairs to the number of existing pods that match the anti-affinity terms of the "pod".
@@ -83,6 +84,7 @@ func (s *preFilterState) updateWithPod(pInfo *framework.PodInfo, node *v1.Node, 
 	s.antiAffinityCounts.updateWithAntiAffinityTerms(s.podInfo.RequiredAntiAffinityTerms, pInfo.Pod, nil, node, multiplier)
 }
 
+//定义topologyPair结构体
 type topologyPair struct {
 	key   string
 	value string
@@ -149,8 +151,9 @@ func podMatchesAllAffinityTerms(terms []framework.AffinityTerm, pod *v1.Pod) boo
 	return true
 }
 
+//在每个node上为pod进行计算
 // calculates the following for each existing pod on each node:
-// (1) Whether it has PodAntiAffinity
+// (1) Whether it has PodAntiAffinity //这个node是否存在PodAntiAffinity
 // (2) Whether any AffinityTerm matches the incoming pod
 func (pl *InterPodAffinity) getExistingAntiAffinityCounts(ctx context.Context, pod *v1.Pod, nsLabels labels.Set, nodes []*framework.NodeInfo) topologyToMatchedTermCount {
 	topoMaps := make([]topologyToMatchedTermCount, len(nodes))
@@ -302,6 +305,7 @@ func getPreFilterState(cycleState *framework.CycleState) (*preFilterState, error
 	return s, nil
 }
 
+//check将pid调度到这个node会不会打破anti-affinity
 // Checks if scheduling the pod onto this node would break any anti-affinity
 // terms indicated by the existing pods.
 func satisfyExistingPodsAntiAffinity(state *preFilterState, nodeInfo *framework.NodeInfo) bool {
@@ -318,6 +322,7 @@ func satisfyExistingPodsAntiAffinity(state *preFilterState, nodeInfo *framework.
 	return true
 }
 
+//检查node是否符合pod的anti-affinity规则
 // Checks if the node satisfies the incoming pod's anti-affinity rules.
 func satisfyPodAntiAffinity(state *preFilterState, nodeInfo *framework.NodeInfo) bool {
 	if len(state.antiAffinityCounts) > 0 {
@@ -333,6 +338,7 @@ func satisfyPodAntiAffinity(state *preFilterState, nodeInfo *framework.NodeInfo)
 	return true
 }
 
+//检查node是否符合pod的affinity规则
 // Checks if the node satisfies the incoming pod's affinity rules.
 func satisfyPodAffinity(state *preFilterState, nodeInfo *framework.NodeInfo) bool {
 	podsExist := true

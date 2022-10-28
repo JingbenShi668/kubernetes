@@ -21,8 +21,9 @@ import (
 )
 
 const (
-	// PodAdd is the event when a new pod is added to API server.
+	// PodAdd is the event when a new pod is added to API server. //像API server添加pod
 	PodAdd = "PodAdd"
+	//调度失败
 	// ScheduleAttemptFailure is the event when a schedule attempt fails.
 	ScheduleAttemptFailure = "ScheduleAttemptFailure"
 	// BackoffComplete is the event when a pod finishes backoff.

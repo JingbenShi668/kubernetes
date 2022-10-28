@@ -163,7 +163,7 @@ type PriorityQueue struct {
 
 	// activeQ is heap structure that scheduler actively looks at to find pods to
 	// schedule. Head of heap is the highest priority pod.
-	activeQ *heap.Heap
+	activeQ *heap.Heap     //activeQ是Heap类型的结构体
 	// podBackoffQ is a heap ordered by backoff expiry. Pods which have completed backoff
 	// are popped from this heap before the scheduler looks at activeQ
 	podBackoffQ *heap.Heap
@@ -301,6 +301,7 @@ func NewPriorityQueue(
 	return pq
 }
 
+//将podBackoffQ的pod移动到activeQ中
 // Run starts the goroutine to pump from podBackoffQ to activeQ
 func (p *PriorityQueue) Run() {
 	go wait.Until(p.flushBackoffQCompleted, 1.0*time.Second, p.stop)
@@ -518,6 +519,7 @@ func (p *PriorityQueue) Pop() (*framework.QueuedPodInfo, error) {
 	return pInfo, nil
 }
 
+//如果一个pod被更新的话，它可能变为schedulable状态
 // isPodUpdated checks if the pod is updated in a way that it may have become
 // schedulable. It drops status of the pod and compares it with old version.
 func isPodUpdated(oldPod, newPod *v1.Pod) bool {
