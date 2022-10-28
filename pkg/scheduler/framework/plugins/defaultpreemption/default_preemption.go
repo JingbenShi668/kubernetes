@@ -31,7 +31,6 @@ import (
 	corelisters "k8s.io/client-go/listers/core/v1"
 	policylisters "k8s.io/client-go/listers/policy/v1"
 	corev1helpers "k8s.io/component-helpers/scheduling/corev1"
-	"k8s.io/klog/v2"
 	extenderv1 "k8s.io/kube-scheduler/extender/v1"
 	"k8s.io/kubernetes/pkg/scheduler/apis/config"
 	"k8s.io/kubernetes/pkg/scheduler/apis/config/validation"
@@ -177,6 +176,7 @@ func (pl *DefaultPreemption) SelectVictimsOnNode(
 		return nil, 0, framework.NewStatus(framework.UnschedulableAndUnresolvable, message)
 	}
 
+	//如果移除说有的lower priority pods之后，这个pod还是不适合，那么这个node就不适合preemption
 	// If the new pod does not fit after removing all the lower priority pods,
 	// we are almost done and this node is not suitable for preemption. The only
 	// condition that we could check is if the "pod" is failing to schedule due to
@@ -225,6 +225,9 @@ func (pl *DefaultPreemption) SelectVictimsOnNode(
 	return victims, numViolatingVictim, framework.NewStatus(framework.Success)
 }
 
+//PodEligibleToPreemptOthers返回这个pod是否考虑preempting
+//如果这个pod的preemptionPolicy是Never,或者这个pod已经preempted other pods, 那么这个pod不再考虑preemption
+//如果这个pod所考虑抢占的node上有很多terminating pods,则不考虑preempting more pods.
 // PodEligibleToPreemptOthers returns one bool and one string. The bool
 // indicates whether this pod should be considered for preempting other pods or
 // not. The string includes the reason if this pod isn't eligible.
