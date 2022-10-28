@@ -47,6 +47,7 @@ func (b DefaultBinder) Name() string {
 	return Name
 }
 
+//使用k8s client绑定pod与node
 // Bind binds pods to nodes using the k8s client.
 func (b DefaultBinder) Bind(ctx context.Context, state *framework.CycleState, p *v1.Pod, nodeName string) *framework.Status {
 	klog.V(3).InfoS("Attempting to bind pod to node", "pod", klog.KObj(p), "node", klog.KRef("", nodeName))

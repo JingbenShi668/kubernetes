@@ -32,6 +32,8 @@ import (
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/names"
 )
 
+//NodeAffinity结构体
+//NodeAffinity检查pod node selector是否匹配node label
 // NodeAffinity is a plugin that checks if a pod node selector matches the node label.
 type NodeAffinity struct {
 	handle              framework.Handle
@@ -140,6 +142,7 @@ func (pl *NodeAffinity) PreFilterExtensions() framework.PreFilterExtensions {
 	return nil
 }
 
+//Filter检查Node是否匹配Pod的.spec.affinity.nodeAffinity
 // Filter checks if the Node matches the Pod .spec.affinity.nodeAffinity and
 // the plugin's added affinity.
 func (pl *NodeAffinity) Filter(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodeInfo *framework.NodeInfo) *framework.Status {

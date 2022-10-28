@@ -52,6 +52,7 @@ func (pl *TaintToleration) Name() string {
 	return Name
 }
 
+//EventsToRegister返回pod failed的events
 // EventsToRegister returns the possible events that may make a Pod
 // failed by this plugin schedulable.
 func (pl *TaintToleration) EventsToRegister() []framework.ClusterEvent {

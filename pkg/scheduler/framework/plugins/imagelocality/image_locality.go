@@ -91,6 +91,7 @@ func calculatePriority(sumScores int64, numContainers int) int64 {
 	return int64(framework.MaxNodeScore) * (sumScores - minThreshold) / (maxThreshold - minThreshold)
 }
 
+//sumImageScores返回在某个node上的所有container的image scores总和
 // sumImageScores returns the sum of image scores of all the containers that are already on the node.
 // Each image receives a raw score of its size, scaled by scaledImageScore. The raw scores are later used to calculate
 // the final score. Note that the init containers are not considered for it's rare for users to deploy huge init containers.

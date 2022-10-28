@@ -29,7 +29,6 @@ import (
 	ephemeral "k8s.io/component-helpers/storage/ephemeral"
 	storagehelpers "k8s.io/component-helpers/storage/volume"
 	csitrans "k8s.io/csi-translation-lib"
-	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/scheduler/framework"
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/feature"
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/names"
@@ -48,6 +47,7 @@ type InTreeToCSITranslator interface {
 	TranslateInTreeInlineVolumeToCSI(volume *v1.Volume, podNamespace string) (*v1.PersistentVolume, error)
 }
 
+//CSILimits检查node volume limits
 // CSILimits is a plugin that checks node volume limits.
 type CSILimits struct {
 	csiNodeLister storagelisters.CSINodeLister

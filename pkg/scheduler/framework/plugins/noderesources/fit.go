@@ -74,6 +74,7 @@ var nodeResourceStrategyTypeMap = map[config.ScoringStrategyType]scorer{
 	},
 }
 
+//Fit检查一个node是否有sufficient resources
 // Fit is a plugin that checks if a node has sufficient resources.
 type Fit struct {
 	ignoredResources      sets.String
