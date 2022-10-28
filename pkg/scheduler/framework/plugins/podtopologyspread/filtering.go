@@ -24,12 +24,12 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/component-helpers/scheduling/corev1/nodeaffinity"
-	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/scheduler/framework"
 )
 
 const preFilterStateKey = "PreFilter" + Name
 
+//preFilterState在PreFilter阶段被使用
 // preFilterState computed at PreFilter and used at Filter.
 // It combines TpKeyToCriticalPaths and TpPairToMatchNum to represent:
 // (1) critical paths where the least pods are matched on each spread constraint.

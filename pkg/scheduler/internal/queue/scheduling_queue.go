@@ -40,7 +40,6 @@ import (
 	"k8s.io/client-go/informers"
 	listersv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/scheduler/framework"
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/interpodaffinity"
 	"k8s.io/kubernetes/pkg/scheduler/internal/heap"
@@ -50,6 +49,9 @@ import (
 )
 
 const (
+	//DefaultPodMaxInUnschedulablePodsDuration是一个pod处于unschedulablePods中的最长时间
+	//如果pod在unschedulablePods中的时间>DefaultPodMaxInUnschedulablePodsDuration,
+	//则pod被移动到backoffQ或者activeQ
 	// DefaultPodMaxInUnschedulablePodsDuration is the default value for the maximum
 	// time a pod can stay in unschedulablePods. If a pod stays in unschedulablePods
 	// for longer than this value, the pod will be moved from unschedulablePods to
@@ -81,20 +83,24 @@ const (
 // by the checking result.
 type PreEnqueueCheck func(pod *v1.Pod) bool
 
+//SchedulingQueue存储等待schedule的pod
 // SchedulingQueue is an interface for a queue to store pods waiting to be scheduled.
 // The interface follows a pattern similar to cache.FIFO and cache.Heap and
 // makes it easy to use those data structures as a SchedulingQueue.
 type SchedulingQueue interface {
 	framework.PodNominator
 	Add(pod *v1.Pod) error
-	// Activate moves the given pods to activeQ iff they're in unschedulablePods or backoffQ.
+	//Activate函数将处于unschedulablePods or backoffQ中的pod移动到activeQ
+	// Activate moves the given pods to activeQ if they're in unschedulablePods or backoffQ.
 	// The passed-in pods are originally compiled from plugins that want to activate Pods,
 	// by injecting the pods through a reserved CycleState struct (PodsToActivate).
 	Activate(pods map[string]*v1.Pod)
+	//将unschedulable pod放回scheduling queue
 	// AddUnschedulableIfNotPresent adds an unschedulable pod back to scheduling queue.
 	// The podSchedulingCycle represents the current scheduling cycle number which can be
 	// returned by calling SchedulingCycle().
 	AddUnschedulableIfNotPresent(pod *framework.QueuedPodInfo, podSchedulingCycle int64) error
+	//scheduling queue所维护的scheduling cycle数量
 	// SchedulingCycle returns the current number of scheduling cycle which is
 	// cached by scheduling queue. Normally, incrementing this number whenever
 	// a pod is popped (e.g. called Pop()) is enough.
@@ -123,6 +129,7 @@ func NewSchedulingQueue(
 	return NewPriorityQueue(lessFn, informerFactory, opts...)
 }
 
+//返回pod的提名node
 // NominatedNodeName returns nominated node name of a Pod.
 func NominatedNodeName(pod *v1.Pod) string {
 	return pod.Status.NominatedNodeName
@@ -132,11 +139,11 @@ func NominatedNodeName(pod *v1.Pod) string {
 // The head of PriorityQueue is the highest priority pending pod. This structure
 // has two sub queues and a additional data structure, namely: activeQ,
 // backoffQ and unschedulablePods.
-//   - activeQ holds pods that are being considered for scheduling.
+//   - activeQ holds pods that are being considered for scheduling. //考虑进行调度的pod
 //   - backoffQ holds pods that moved from unschedulablePods and will move to
-//     activeQ when their backoff periods complete.
+//     activeQ when their backoff periods complete.//从unschedulablePods移动到activeQ的pod
 //   - unschedulablePods holds pods that were already attempted for scheduling and
-//     are currently determined to be unschedulable.
+//     are currently determined to be unschedulable.//目前不考虑进行调度的pod
 type PriorityQueue struct {
 	// PodNominator abstracts the operations to maintain nominated Pods.
 	framework.PodNominator

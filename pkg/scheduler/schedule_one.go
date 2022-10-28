@@ -357,6 +357,7 @@ func (sched *Scheduler) schedulePod(ctx context.Context, fwk framework.Framework
 		return result, ErrNoNodesAvailable
 	}
 
+	//预选
 	//为pod寻找合适的node
 	feasibleNodes, diagnosis, err := sched.findNodesThatFitPod(ctx, fwk, state, pod)
 	if err != nil {
@@ -381,6 +382,7 @@ func (sched *Scheduler) schedulePod(ctx context.Context, fwk framework.Framework
 		}, nil
 	}
 
+	//优选阶段
 	//为pod找到可调度的nodes，且数量>1, 进入优选(打分)阶段
 	priorityList, err := prioritizeNodes(ctx, sched.Extenders, fwk, state, pod, feasibleNodes)
 	if err != nil {
@@ -397,7 +399,7 @@ func (sched *Scheduler) schedulePod(ctx context.Context, fwk framework.Framework
 	}, err
 }
 
-//预选过程：预处理->过滤->用户自定义过滤->结束
+//预选过程：预处理->过滤->用户自定义过滤->结束	（过滤插件在早期版本叫做预选算法）
 //过滤阶段，此阶段获取过滤之后所有可用的节点，供下一阶段使用，即feasibleNodes
 // Filters the nodes to find the ones that fit the pod based on the framework
 // filter plugins and filter extenders.
@@ -672,6 +674,7 @@ func findNodesThatPassExtenders(extenders []framework.Extender, pod *v1.Pod, fea
 // any extenders are run as well.
 //所有分数最终构成全部node的weighted scores
 // All scores are finally combined (added) to get the total weighted scores of all nodes
+//优选阶段
 func prioritizeNodes(
 	ctx context.Context,
 	extenders []framework.Extender,
